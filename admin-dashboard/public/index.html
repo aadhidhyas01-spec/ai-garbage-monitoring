@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CivicLens AI - Real-time civic monitoring command center for municipal authorities" />
+  <title>CivicLens AI — Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0d1117;
+      --bg2:        #161b22;
+      --bg3:        #1c2230;
+      --surface:    #21262d;
+      --border:     rgba(48,54,61,0.9);
+      --border-lt:  rgba(255,255,255,0.06);
+      --text:       #e6edf3;
+      --muted:      #7d8590;
+      --muted2:     #484f58;
+      --primary:    #1f6feb;
+      --primary-lt: rgba(31,111,235,0.15);
+      --danger:     #f85149;
+      --danger-lt:  rgba(248,81,73,0.12);
+      --warn:       #d29922;
+      --warn-lt:    rgba(210,153,34,0.12);
+      --success:    #3fb950;
+      --success-lt: rgba(63,185,80,0.12);
+      --purple:     #a371f7;
+      --purple-lt:  rgba(163,113,247,0.12);
+      --sidebar-w:  240px;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar-logo {
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #1f6feb, #a371f7);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-icon svg { width:16px; height:16px; fill:#fff; }
+
+    .sidebar-logo-text { font-size:14px; font-weight:600; letter-spacing:-0.3px; }
+    .sidebar-logo-sub { font-size:10px; color:var(--muted); margin-top:1px; }
+
+    .sidebar-section { padding: 10px 8px 4px; }
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.8px; padding: 0 8px; margin-bottom:4px;
+    }
+
+    .sidebar-nav { flex: 1; padding: 8px; overflow-y:auto; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 6px; cursor: pointer;
+      color: var(--muted); font-size:13px; font-weight:500;
+      transition: all .15s ease; margin-bottom:1px; border: none; background: transparent; width: 100%;
+      text-align: left;
+    }
+    .nav-item:hover { background: var(--surface); color: var(--text); }
+    .nav-item.active { background: var(--primary-lt); color: var(--primary); }
+    .nav-item svg { width:16px; height:16px; flex-shrink:0; }
+
+    .nav-badge {
+      margin-left:auto; background: var(--danger); color:#fff;
+      font-size:10px; font-weight:700; border-radius:10px; padding:1px 6px;
+      min-width:18px; text-align:center;
+    }
+
+    .sidebar-footer {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .avatar {
+      width:32px; height:32px; border-radius:50%;
+      background: linear-gradient(135deg, #1f6feb, #a371f7);
+      display: flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:700; flex-shrink:0;
+    }
+    .avatar-info { flex:1; min-width:0; }
+    .avatar-name { font-size:12px; font-weight:600; }
+    .avatar-role { font-size:10px; color:var(--muted); }
+
+    /* ── MAIN AREA ── */
+    .main {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      height:52px; flex-shrink:0;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items:center; gap:12px; padding: 0 20px;
+    }
+
+    .topbar-title { font-weight:600; font-size:14px; flex:1; }
+
+    .live-badge {
+      display:flex; align-items:center; gap:5px;
+      font-size:11px; font-weight:600; color: var(--success);
+      background: var(--success-lt); padding:4px 10px; border-radius:20px;
+      border: 1px solid rgba(63,185,80,0.25);
+    }
+    .live-dot {
+      width:6px; height:6px; border-radius:50%; background:var(--success);
+      animation: blink 1.2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .topbar-btn {
+      display:flex; align-items:center; gap:6px;
+      background:var(--surface); border:1px solid var(--border);
+      color:var(--text); padding:5px 12px; border-radius:6px;
+      cursor:pointer; font-size:12px; font-weight:500;
+      transition: all .15s; text-decoration:none;
+    }
+    .topbar-btn:hover { background:var(--bg3); border-color:var(--muted2); }
+    .topbar-btn.danger { color:var(--danger); border-color:rgba(248,81,73,0.3); background:var(--danger-lt); }
+    .topbar-btn.danger:hover { background: rgba(248,81,73,0.2); }
+    .topbar-btn svg { width:14px; height:14px; }
+
+    /* ── CONTENT ── */
+    .content {
+      flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
+    }
+
+    /* ── STATS ROW ── */
+    .stats-bar {
+      flex-shrink: 0;
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1px; background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-tile {
+      background: var(--bg2);
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 14px;
+    }
+
+    .stat-icon-wrap {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .stat-icon-wrap svg { width:18px; height:18px; }
+    .stat-icon-wrap.blue { background:var(--primary-lt); color:var(--primary); }
+    .stat-icon-wrap.orange { background:var(--warn-lt); color:var(--warn); }
+    .stat-icon-wrap.purple { background:var(--purple-lt); color:var(--purple); }
+    .stat-icon-wrap.green { background:var(--success-lt); color:var(--success); }
+
+    .stat-data { min-width: 0; }
+    .stat-val { font-size:22px; font-weight:700; line-height:1; font-family:'JetBrains Mono', monospace; }
+    .stat-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
+
+    /* ── WORKSPACE ── */
+    .workspace {
+      flex: 1; display: grid;
+      grid-template-columns: 360px 1fr 320px;
+      grid-template-rows: 1fr;
+      overflow: hidden; min-height: 0;
+      gap: 1px; background: var(--border);
+    }
+
+    .panel {
+      background: var(--bg2);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    .panel-head {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .panel-head-title {
+      font-size: 12px; font-weight: 600; color: var(--text);
+      display:flex; align-items:center; gap:6px;
+    }
+
+    .panel-head-title svg { width:14px; height:14px; color:var(--muted); }
+
+    .panel-extra { margin-left: auto; display: flex; align-items:center; gap: 8px; }
+
+    .panel-body { flex:1; overflow-y:auto; }
+
+    /* scrollbar */
+    .panel-body::-webkit-scrollbar { width:4px; }
+    .panel-body::-webkit-scrollbar-track { background:transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background:var(--muted2); border-radius:2px; }
+
+    /* ── FILTER TABS ── */
+    .filter-tabs {
+      display:flex; gap:2px; padding:8px 12px;
+      border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .tab-btn {
+      background:transparent; border:none; color:var(--muted); padding:4px 10px;
+      border-radius:5px; cursor:pointer; font-size:12px; font-weight:500;
+      transition: all .15s;
+    }
+    .tab-btn:hover { background:var(--surface); color:var(--text); }
+    .tab-btn.active { background:var(--primary-lt); color:var(--primary); font-weight:600; }
+
+    /* ── ALERT ITEM ── */
+    .alert-item {
+      display:flex; gap:10px; padding:10px 14px;
+      border-bottom:1px solid var(--border);
+      cursor:pointer; transition: background .1s;
+      position: relative; align-items: flex-start;
+    }
+
+    .alert-item:hover { background:var(--bg3); }
+    .alert-item.active { background: rgba(31,111,235,0.07); }
+    .alert-item.active::before {
+      content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--primary);
+    }
+
+    .alert-thumb {
+      width:56px; height:48px; border-radius:6px; object-fit:cover;
+      background:var(--surface); flex-shrink:0; border:1px solid var(--border);
+    }
+    .alert-thumb-placeholder {
+      width:56px; height:48px; border-radius:6px; flex-shrink:0;
+      background:var(--surface); border:1px solid var(--border);
+      display:flex; align-items:center; justify-content:center; font-size:18px;
+    }
+
+    .alert-info { flex:1; min-width:0; }
+    .alert-title { font-size:12px; font-weight:600; line-height:1.3; margin-bottom:3px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .alert-sub { font-size:11px; color:var(--muted); display:flex; gap:8px; flex-wrap:wrap; }
+
+    .status-dot {
+      display:inline-block; width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:3px;
+    }
+    .status-dot.pending { background:var(--warn); }
+    .status-dot.dispatched { background:var(--purple); }
+    .status-dot.resolved { background:var(--success); }
+
+    .status-pill {
+      font-size:10px; font-weight:600; padding:1px 6px; border-radius:4px;
+      text-transform:uppercase; letter-spacing:0.4px;
+    }
+    .status-pill.pending { background:var(--warn-lt); color:var(--warn); }
+    .status-pill.dispatched { background:var(--purple-lt); color:var(--purple); }
+    .status-pill.resolved { background:var(--success-lt); color:var(--success); }
+
+    /* ── CENTER PANEL (CAMERA GRID + MAP) ── */
+    .cam-panel-head { flex-shrink:0; }
+
+    .cam-tabs {
+      display:flex; border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .cam-tab {
+      flex:1; text-align:center; padding:10px; font-size:12px; font-weight:500;
+      color:var(--muted); cursor:pointer; border-bottom:2px solid transparent;
+      transition:all .15s;
+    }
+    .cam-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+
+    /* Camera Grid */
+    .cam-grid {
+      display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+      gap:1px; background:var(--border); flex:1; overflow:hidden;
+    }
+
+    .cam-cell {
+      background:var(--bg);
+      display:flex; flex-direction:column;
+      position:relative; overflow:hidden;
+    }
+
+    .cam-feed {
+      flex:1; position:relative; display:flex; align-items:center; justify-content:center;
+      background:radial-gradient(circle at 50% 50%, #0d1117 60%, #161b22);
+      overflow:hidden;
+    }
+
+    .cam-scanline {
+      position:absolute; inset:0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+      pointer-events:none; z-index:2;
+    }
+
+    .cam-feed-img {
+      width:100%; height:100%; object-fit:cover; display:block; opacity:0.92;
+    }
+
+    .cam-no-feed {
+      display:flex; flex-direction:column; align-items:center; gap:8px;
+      color:var(--muted2);
+    }
+    .cam-no-feed svg { width:32px; height:32px; opacity:.5; }
+    .cam-no-feed span { font-size:11px; font-family:'JetBrains Mono', monospace; }
+
+    .cam-hud {
+      position:absolute; inset:0; z-index:3; pointer-events:none;
+    }
+
+    .cam-hud-corner {
+      position:absolute; width:14px; height:14px;
+      border-color: rgba(63,185,80,0.7); border-style:solid;
+    }
+    .cam-hud-corner.tl { top:6px; left:6px; border-width:1.5px 0 0 1.5px; }
+    .cam-hud-corner.tr { top:6px; right:6px; border-width:1.5px 1.5px 0 0; }
+    .cam-hud-corner.bl { bottom:6px; left:6px; border-width:0 0 1.5px 1.5px; }
+    .cam-hud-corner.br { bottom:6px; right:6px; border-width:0 1.5px 1.5px 0; }
+    .cam-hud-corner.alert { border-color: rgba(248,81,73,0.8) !important; }
+
+    .cam-hud-ts {
+      position:absolute; top:6px; right:20px;
+      font-family:'JetBrains Mono', monospace; font-size:9px;
+      color:rgba(255,255,255,0.6);
+    }
+
+    .cam-hud-zone {
+      position:absolute; bottom:6px; left:6px;
+      font-family:'JetBrains Mono', monospace; font-size:9px;
+      color:rgba(255,255,255,0.7);
+    }
+
+    .cam-hud-rec {
+      position:absolute; top:6px; left:6px;
+      display:flex; align-items:center; gap:4px;
+      font-family:'JetBrains Mono', monospace; font-size:9px; color:rgba(255,255,255,0.7);
+    }
+    .cam-hud-rec-dot { width:5px; height:5px; border-radius:50%; background:var(--danger); animation:blink 1s infinite; }
+
+    .cam-footer {
+      padding:5px 8px;
+      background:var(--bg2); border-top:1px solid var(--border);
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .cam-label { font-size:10px; font-weight:600; font-family:'JetBrains Mono', monospace; color:var(--muted); }
+    .cam-status { font-size:10px; color:var(--success); font-weight:600; display:flex; align-items:center; gap:4px; }
+    .cam-status.alert { color:var(--danger); }
+    .cam-status.offline { color:var(--muted2); }
+
+    /* Alert banner */
+    .cam-alert-banner {
+      position:absolute; top:0; left:0; right:0; z-index:4;
+      background:rgba(248,81,73,0.9); padding:3px 8px;
+      font-size:10px; font-weight:700; font-family:'JetBrains Mono', monospace;
+      color:#fff; display:flex; align-items:center; gap:5px;
+      animation:slideIn .3s ease;
+    }
+    @keyframes slideIn { from{transform:translateY(-100%)} to{transform:translateY(0)} }
+
+    /* DETECTION BOX */
+    .det-box {
+      position:absolute; border:2px solid rgba(248,81,73,0.9);
+      z-index:3; pointer-events:none;
+      box-shadow: 0 0 8px rgba(248,81,73,0.4);
+    }
+    .det-box-label {
+      position:absolute; top:-18px; left:0;
+      background:var(--danger); color:#fff;
+      font-size:9px; font-weight:700; font-family:'JetBrains Mono', monospace;
+      padding:1px 5px; white-space:nowrap;
+    }
+
+    /* MAP */
+    .map-container {
+      flex:1; position:relative; overflow:hidden;
+      background: #0d1117;
+    }
+
+    .map-svg { width:100%; height:100%; }
+
+    .map-overlay-info {
+      position:absolute; top:12px; left:12px;
+      background:rgba(13,17,23,0.9); border:1px solid var(--border);
+      border-radius:6px; padding:8px 12px; font-size:11px;
+    }
+    .map-overlay-title { font-weight:600; margin-bottom:6px; }
+    .map-legend-item { display:flex; align-items:center; gap:6px; margin-bottom:4px; color:var(--muted); }
+    .map-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* ── RIGHT PANEL ── */
+    .detail-empty {
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      color:var(--muted); gap:10px; padding:20px; text-align:center;
+    }
+    .detail-empty svg { width:40px; height:40px; opacity:.4; }
+    .detail-empty h3 { font-size:13px; font-weight:600; color:var(--muted); }
+    .detail-empty p { font-size:12px; line-height:1.5; }
+
+    .detail-img-wrap {
+      flex-shrink:0; height:160px; background:var(--bg); border-bottom:1px solid var(--border);
+      position:relative; overflow:hidden;
+    }
+    .detail-img { width:100%; height:100%; object-fit:cover; }
+    .detail-img-badge {
+      position:absolute; bottom:8px; left:8px;
+      background:rgba(13,17,23,0.85); border:1px solid var(--border);
+      border-radius:4px; padding:3px 8px; font-size:10px; font-family:'JetBrains Mono', monospace;
+    }
+
+    .detail-meta {
+      flex-shrink:0; padding:12px 16px;
+      border-bottom:1px solid var(--border);
+      display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    }
+
+    .meta-field {}
+    .meta-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px; }
+    .meta-value { font-size:12px; font-weight:600; }
+    .meta-value.mono { font-family:'JetBrains Mono', monospace; }
+
+    .detail-actions {
+      flex:1; overflow-y:auto; padding:14px;
+      display:flex; flex-direction:column; gap:12px;
+    }
+
+    .action-card {
+      background:var(--bg); border:1px solid var(--border); border-radius:8px;
+      padding:12px; display:flex; flex-direction:column; gap:10px;
+    }
+    .action-card-title {
+      font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px;
+    }
+    .action-card-title svg { width:14px; height:14px; }
+
+    .form-group { display:flex; flex-direction:column; gap:5px; }
+    .form-lbl { font-size:11px; font-weight:500; color:var(--muted); }
+    .form-sel, .form-ta {
+      background:var(--bg2); border:1px solid var(--border);
+      color:var(--text); padding:8px 10px; border-radius:6px;
+      font-family:inherit; font-size:12px; outline:none;
+      transition:border-color .15s; width:100%;
+    }
+    .form-sel:focus, .form-ta:focus { border-color:var(--primary); }
+    .form-ta { resize:vertical; min-height:70px; }
+
+    .btn-dispatch {
+      background:var(--primary); border:none; color:#fff;
+      padding:9px 14px; border-radius:6px; cursor:pointer;
+      font-size:12px; font-weight:600; width:100%;
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-dispatch:hover { opacity:.9; }
+    .btn-dispatch:active { transform:scale(.99); }
+    .btn-dispatch.green { background:var(--success); }
+    .btn-dispatch svg { width:14px; height:14px; }
+
+    .resolved-card {
+      background:var(--success-lt); border:1px solid rgba(63,185,80,0.25);
+      border-radius:8px; padding:12px;
+    }
+    .resolved-card-title { font-size:12px; font-weight:600; color:var(--success); margin-bottom:8px; display:flex; align-items:center; gap:5px; }
+    .resolved-line { font-size:12px; color:var(--muted); margin-bottom:4px; }
+    .resolved-line strong { color:var(--text); }
+
+    .dispatched-card {
+      background:var(--purple-lt); border:1px solid rgba(163,113,247,0.25);
+      border-radius:8px; padding:12px;
+    }
+    .dispatched-card-title { font-size:12px; font-weight:600; color:var(--purple); margin-bottom:8px; display:flex; align-items:center; gap:5px; }
+
+    /* CONFIDENCE BAR */
+    .conf-bar-wrap { margin-top:2px; }
+    .conf-bar-bg { background:var(--surface); border-radius:3px; height:4px; }
+    .conf-bar-fill { height:4px; border-radius:3px; background:var(--primary); }
+
+    /* TOAST */
+    #toast-container {
+      position:fixed; bottom:20px; right:20px; z-index:9999;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .toast {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:8px; padding:12px 16px; min-width:280px; max-width:360px;
+      display:flex; gap:10px; align-items:flex-start;
+      box-shadow:0 8px 24px rgba(0,0,0,0.5);
+      animation:toastIn .3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes toastIn { from{transform:translateX(120%); opacity:0;} to{transform:translateX(0); opacity:1;} }
+    .toast.out { animation: toastOut .3s ease forwards; }
+    @keyframes toastOut { to{transform:translateX(120%); opacity:0;} }
+
+    .toast-icon { width:16px; height:16px; flex-shrink:0; margin-top:1px; }
+    .toast.danger { border-left:3px solid var(--danger); }
+    .toast.danger .toast-icon { color:var(--danger); }
+    .toast.success { border-left:3px solid var(--success); }
+    .toast.success .toast-icon { color:var(--success); }
+    .toast.info { border-left:3px solid var(--primary); }
+    .toast.info .toast-icon { color:var(--primary); }
+    .toast-text { flex:1; }
+    .toast-title { font-size:12px; font-weight:600; margin-bottom:2px; }
+    .toast-msg { font-size:11px; color:var(--muted); line-height:1.4; }
+
+    /* PULSE */
+    .cam-pulse {
+      position:absolute; inset:0; z-index:5; pointer-events:none;
+      background:rgba(248,81,73,0.15);
+      animation: camPulse .5s ease-in-out 3;
+    }
+    @keyframes camPulse { 0%,100%{opacity:0} 50%{opacity:1} }
+
+    /* SCROLLBAR  */
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--muted2); border-radius:2px; }
+
+    .empty-list {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:40px 20px; gap:8px; color:var(--muted); text-align:center;
+    }
+    .empty-list svg { width:32px; height:32px; opacity:.4; }
+
+    /* input clear btns */
+    .worker-select-option {}
+  </style>
+</head>
+<body>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+    </div>
+    <div>
+      <div class="sidebar-logo-text">CivicLens AI</div>
+      <div class="sidebar-logo-sub">v2.1 — Municipal Edition</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Monitoring</div>
+    </div>
+    <button class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+      Command Center
+    </button>
+    <button class="nav-item" onclick="showToast('info','Navigation','Live Map view coming soon.')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+      Live Map
+    </button>
+    <button class="nav-item" onclick="showToast('info','Navigation','Camera Management coming soon.')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l4.553-2.069A1 1 0 0121 8.877V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+      Cameras
+      <span style="margin-left:auto;font-size:10px;color:var(--muted);">4</span>
+    </button>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Dispatch</div>
+    </div>
+    <button class="nav-item" id="navAlerts" onclick="document.getElementById('tab-all').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      Alerts Feed
+      <span class="nav-badge" id="navBadge" style="display:none">0</span>
+    </button>
+    <button class="nav-item" onclick="showToast('info','Navigation','Personnel roster coming soon.')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75"/></svg>
+      Field Officers
+    </button>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Reports</div>
+    </div>
+    <button class="nav-item" onclick="showToast('info','Navigation','Analytics dashboard coming soon.')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Analytics
+    </button>
+    <button class="nav-item" onclick="showToast('info','Navigation','Audit logs coming soon.')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Audit Log
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="avatar">AD</div>
+    <div class="avatar-info">
+      <div class="avatar-name">Admin HQ</div>
+      <div class="avatar-role">Super Administrator</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title">Civic Surveillance — Real-Time Command Center</div>
+    <div class="live-badge"><span class="live-dot"></span> LIVE</div>
+    <span id="clockDisplay" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);"></span>
+    <a href="/employee.html" class="topbar-btn" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Field Portal
+    </a>
+    <button class="topbar-btn danger" onclick="confirmReset()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+      Reset Demo
+    </button>
+  </div>
+
+  <div class="content">
+    <!-- STATS -->
+    <div class="stats-bar">
+      <div class="stat-tile">
+        <div class="stat-icon-wrap blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-val" id="statTotal">0</div>
+          <div class="stat-lbl">Total Incidents</div>
+        </div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-icon-wrap orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-val" id="statPending">0</div>
+          <div class="stat-lbl">Pending Review</div>
+        </div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-icon-wrap purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-val" id="statDispatched">0</div>
+          <div class="stat-lbl">Dispatched</div>
+        </div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-icon-wrap green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="stat-data">
+          <div class="stat-val" id="statResolved">0</div>
+          <div class="stat-lbl">Resolved</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+
+      <!-- COL 1: Alerts Feed -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            Incident Feed
+          </div>
+          <div class="panel-extra">
+            <span id="feedCount" style="font-size:11px;color:var(--muted);">0 alerts</span>
+          </div>
+        </div>
+        <div class="filter-tabs">
+          <button class="tab-btn active" id="tab-all" onclick="setFilter('all')">All</button>
+          <button class="tab-btn" id="tab-pending" onclick="setFilter('pending')">Pending</button>
+          <button class="tab-btn" id="tab-dispatched" onclick="setFilter('dispatched')">Dispatched</button>
+          <button class="tab-btn" id="tab-resolved" onclick="setFilter('resolved')">Resolved</button>
+        </div>
+        <div class="panel-body" id="alertsFeed"></div>
+      </div>
+
+      <!-- COL 2: Cameras / Map -->
+      <div class="panel" style="background:var(--bg);">
+        <div class="cam-tabs">
+          <div class="cam-tab active" id="camTabCams" onclick="switchCenterTab('cams')">📡 Live Cameras</div>
+          <div class="cam-tab" id="camTabMap" onclick="switchCenterTab('map')">🗺 Zone Map</div>
+        </div>
+
+        <div id="centerCams" class="cam-grid">
+          <!-- ZONE A -->
+          <div class="cam-cell" id="camCell_ZONE_A">
+            <div class="cam-feed" id="camFeed_ZONE_A">
+              <div class="cam-scanline"></div>
+              <div class="cam-hud">
+                <div class="cam-hud-rec"><div class="cam-hud-rec-dot"></div>REC</div>
+                <div class="cam-hud-ts" id="camTs_ZONE_A"></div>
+                <div class="cam-hud-zone">ZONE-A · CAM-001</div>
+                <div class="cam-hud-corner tl"></div>
+                <div class="cam-hud-corner tr"></div>
+                <div class="cam-hud-corner bl"></div>
+                <div class="cam-hud-corner br"></div>
+              </div>
+              <div class="cam-no-feed" id="camNoFeed_ZONE_A">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.877V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                <span>CONNECTING...</span>
+              </div>
+            </div>
+            <div class="cam-footer">
+              <span class="cam-label">ZONE-A / CAM-001</span>
+              <span class="cam-status" id="camStatus_ZONE_A"><span class="live-dot"></span>LIVE</span>
+            </div>
+          </div>
+
+          <!-- ZONE B -->
+          <div class="cam-cell" id="camCell_ZONE_B">
+            <div class="cam-feed" id="camFeed_ZONE_B">
+              <div class="cam-scanline"></div>
+              <div class="cam-hud">
+                <div class="cam-hud-rec"><div class="cam-hud-rec-dot"></div>REC</div>
+                <div class="cam-hud-ts" id="camTs_ZONE_B"></div>
+                <div class="cam-hud-zone">ZONE-B · CAM-002</div>
+                <div class="cam-hud-corner tl"></div>
+                <div class="cam-hud-corner tr"></div>
+                <div class="cam-hud-corner bl"></div>
+                <div class="cam-hud-corner br"></div>
+              </div>
+              <div class="cam-no-feed" id="camNoFeed_ZONE_B">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.877V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                <span>CONNECTING...</span>
+              </div>
+            </div>
+            <div class="cam-footer">
+              <span class="cam-label">ZONE-B / CAM-002</span>
+              <span class="cam-status" id="camStatus_ZONE_B"><span class="live-dot"></span>LIVE</span>
+            </div>
+          </div>
+
+          <!-- ZONE C -->
+          <div class="cam-cell" id="camCell_ZONE_C">
+            <div class="cam-feed" id="camFeed_ZONE_C">
+              <div class="cam-scanline"></div>
+              <div class="cam-hud">
+                <div class="cam-hud-rec"><div class="cam-hud-rec-dot"></div>REC</div>
+                <div class="cam-hud-ts" id="camTs_ZONE_C"></div>
+                <div class="cam-hud-zone">ZONE-C · CAM-003</div>
+                <div class="cam-hud-corner tl"></div>
+                <div class="cam-hud-corner tr"></div>
+                <div class="cam-hud-corner bl"></div>
+                <div class="cam-hud-corner br"></div>
+              </div>
+              <div class="cam-no-feed" id="camNoFeed_ZONE_C">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 10l4.553-2.069A1 1 0 0121 8.877V15.12a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
+                <span>CONNECTING...</span>
+              </div>
+            </div>
+            <div class="cam-footer">
+              <span class="cam-label">ZONE-C / CAM-003</span>
+              <span class="cam-status" id="camStatus_ZONE_C"><span class="live-dot"></span>LIVE</span>
+            </div>
+          </div>
+
+          <!-- ZONE D (Offline) -->
+          <div class="cam-cell">
+            <div class="cam-feed" style="background:#090d13;">
+              <div class="cam-hud">
+                <div class="cam-hud-zone">ZONE-D · CAM-004</div>
+                <div class="cam-hud-corner tl" style="border-color:rgba(120,120,120,0.4)"></div>
+                <div class="cam-hud-corner tr" style="border-color:rgba(120,120,120,0.4)"></div>
+                <div class="cam-hud-corner bl" style="border-color:rgba(120,120,120,0.4)"></div>
+                <div class="cam-hud-corner br" style="border-color:rgba(120,120,120,0.4)"></div>
+              </div>
+              <div class="cam-no-feed" style="color:var(--muted2);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 01-2-2V8a2 2 0 012-2h3m3-3h6l2 3h4a2 2 0 012 2v9.34m-7.72-2.06a4 4 0 11-5.56-5.56"/></svg>
+                <span>SIGNAL LOST</span>
+              </div>
+            </div>
+            <div class="cam-footer">
+              <span class="cam-label">ZONE-D / CAM-004</span>
+              <span class="cam-status offline">⊘ OFFLINE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MAP TAB -->
+        <div id="centerMap" style="display:none;flex:1;position:relative;overflow:hidden;background:#0d1117;">
+          <svg class="map-svg" viewBox="0 0 600 440" id="mapSvg">
+            <!-- Background grid -->
+            <defs>
+              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="600" height="440" fill="url(#grid)"/>
+
+            <!-- Roads -->
+            <rect x="0" y="195" width="600" height="50" fill="rgba(255,255,255,0.035)" rx="0"/>
+            <rect x="270" y="0" width="60" height="440" fill="rgba(255,255,255,0.035)" rx="0"/>
+            <!-- Road markings -->
+            <line x1="0" y1="220" x2="600" y2="220" stroke="rgba(210,153,34,0.25)" stroke-width="1" stroke-dasharray="20,15"/>
+            <line x1="300" y1="0" x2="300" y2="440" stroke="rgba(210,153,34,0.25)" stroke-width="1" stroke-dasharray="20,15"/>
+
+            <!-- Zones (city blocks) -->
+            <rect x="10" y="10" width="240" height="165" rx="4" fill="rgba(31,111,235,0.04)" stroke="rgba(31,111,235,0.2)" stroke-width="1"/>
+            <text x="20" y="24" fill="rgba(255,255,255,0.25)" font-size="9" font-family="JetBrains Mono, monospace">ZONE A — NORTH WEST</text>
+            <rect x="350" y="10" width="240" height="165" rx="4" fill="rgba(163,113,247,0.04)" stroke="rgba(163,113,247,0.2)" stroke-width="1"/>
+            <text x="360" y="24" fill="rgba(255,255,255,0.25)" font-size="9" font-family="JetBrains Mono, monospace">ZONE B — NORTH EAST</text>
+            <rect x="10" y="265" width="240" height="165" rx="4" fill="rgba(63,185,80,0.04)" stroke="rgba(63,185,80,0.2)" stroke-width="1"/>
+            <text x="20" y="280" fill="rgba(255,255,255,0.25)" font-size="9" font-family="JetBrains Mono, monospace">ZONE C — SOUTH WEST</text>
+            <rect x="350" y="265" width="240" height="165" rx="4" fill="rgba(125,125,125,0.04)" stroke="rgba(125,125,125,0.15)" stroke-width="1" stroke-dasharray="4,3"/>
+            <text x="360" y="280" fill="rgba(255,255,255,0.15)" font-size="9" font-family="JetBrains Mono, monospace">ZONE D — OFFLINE</text>
+
+            <!-- Camera markers -->
+            <g id="mapCam_ZONE_A" onclick="setFilter('all')" style="cursor:pointer;">
+              <circle cx="130" cy="90" r="14" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.8)" stroke-width="1.5" id="mapRing_ZONE_A"/>
+              <circle cx="130" cy="90" r="7" fill="#3fb950" id="mapDot_ZONE_A"/>
+              <text x="130" y="94" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold" font-family="sans-serif">A</text>
+              <text x="130" y="108" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8" font-family="JetBrains Mono, monospace">CAM-001</text>
+            </g>
+            <g id="mapCam_ZONE_B" onclick="setFilter('all')" style="cursor:pointer;">
+              <circle cx="470" cy="90" r="14" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.8)" stroke-width="1.5" id="mapRing_ZONE_B"/>
+              <circle cx="470" cy="90" r="7" fill="#3fb950" id="mapDot_ZONE_B"/>
+              <text x="470" y="94" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold" font-family="sans-serif">B</text>
+              <text x="470" y="108" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8" font-family="JetBrains Mono, monospace">CAM-002</text>
+            </g>
+            <g id="mapCam_ZONE_C" onclick="setFilter('all')" style="cursor:pointer;">
+              <circle cx="130" cy="350" r="14" fill="rgba(63,185,80,0.15)" stroke="rgba(63,185,80,0.8)" stroke-width="1.5" id="mapRing_ZONE_C"/>
+              <circle cx="130" cy="350" r="7" fill="#3fb950" id="mapDot_ZONE_C"/>
+              <text x="130" y="354" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold" font-family="sans-serif">C</text>
+              <text x="130" y="368" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="8" font-family="JetBrains Mono, monospace">CAM-003</text>
+            </g>
+            <!-- Offline cam -->
+            <g>
+              <circle cx="470" cy="350" r="14" fill="rgba(60,60,60,0.15)" stroke="rgba(80,80,80,0.4)" stroke-width="1.5" stroke-dasharray="3,2"/>
+              <circle cx="470" cy="350" r="7" fill="#484f58"/>
+              <text x="470" y="354" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold" font-family="sans-serif">D</text>
+              <text x="470" y="368" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="8" font-family="JetBrains Mono, monospace">OFFLINE</text>
+            </g>
+
+            <!-- Legend -->
+            <rect x="10" y="390" width="200" height="42" rx="4" fill="rgba(13,17,23,0.9)" stroke="rgba(48,54,61,0.9)" stroke-width="1"/>
+            <circle cx="25" cy="405" r="5" fill="#3fb950"/>
+            <text x="35" y="409" fill="rgba(255,255,255,0.6)" font-size="9" font-family="sans-serif">Active</text>
+            <circle cx="80" cy="405" r="5" fill="#f85149"/>
+            <text x="90" y="409" fill="rgba(255,255,255,0.6)" font-size="9" font-family="sans-serif">Alert</text>
+            <circle cx="130" cy="405" r="5" fill="#a371f7"/>
+            <text x="140" y="409" fill="rgba(255,255,255,0.6)" font-size="9" font-family="sans-serif">Dispatched</text>
+            <circle cx="25" cy="423" r="5" fill="#484f58"/>
+            <text x="35" y="427" fill="rgba(255,255,255,0.6)" font-size="9" font-family="sans-serif">Offline</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- COL 3: Details + Actions -->
+      <div class="panel" id="detailPanel">
+        <div class="panel-head">
+          <div class="panel-head-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Incident Details
+          </div>
+        </div>
+        <div class="detail-empty" id="detailEmpty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          <h3>Select an Incident</h3>
+          <p>Click any alert in the feed to view its details, camera snapshot, and dispatch controls.</p>
+        </div>
+        <div id="detailContent" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+          <!-- filled dynamically -->
+        </div>
+      </div>
+
+    </div><!-- workspace -->
+  </div><!-- content -->
+</div><!-- main -->
+
+<div id="toast-container"></div>
+
+<script>
+  // ── STATE ──
+  let alerts = [], employees = [], selectedId = null;
+  let filter = 'all', prevCount = 0;
+  let soundOn = true;
+
+  // ── CLOCK ──
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clockDisplay').textContent = now.toLocaleTimeString('en-IN', {hour12:false});
+    ['ZONE_A','ZONE_B','ZONE_C'].forEach(z => {
+      const el = document.getElementById('camTs_'+z);
+      if(el) el.textContent = now.toLocaleTimeString('en-IN',{hour12:false});
+    });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── TABS ──
+  function switchCenterTab(tab) {
+    document.getElementById('centerCams').style.display = tab==='cams' ? 'grid' : 'none';
+    document.getElementById('centerMap').style.display  = tab==='map'  ? 'flex' : 'none';
+    document.getElementById('camTabCams').classList.toggle('active', tab==='cams');
+    document.getElementById('camTabMap').classList.toggle('active', tab==='map');
+  }
+
+  // ── FILTER ──
+  function setFilter(f) {
+    filter = f;
+    ['all','pending','dispatched','resolved'].forEach(x => {
+      document.getElementById('tab-'+x).classList.toggle('active', x===f);
+    });
+    renderFeed();
+  }
+
+  // ── TOAST ──
+  function showToast(type, title, msg, duration=4000) {
+    const container = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast '+type;
+    const icons = {
+      danger: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      success: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
+      info: '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    };
+    t.innerHTML = `${icons[type]||icons.info}<div class="toast-text"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+    container.appendChild(t);
+    setTimeout(() => { t.classList.add('out'); setTimeout(()=>t.remove(), 300); }, duration);
+  }
+
+  // ── ALERT SOUND ──
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      [880, 1100].forEach((f, i) => {
+        const osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.frequency.value = f; osc.type='sine';
+        g.gain.setValueAtTime(0.12, ctx.currentTime + i*0.18);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.18 + 0.25);
+        osc.start(ctx.currentTime + i*0.18);
+        osc.stop(ctx.currentTime + i*0.18 + 0.25);
+      });
+    } catch(e){}
+  }
+
+  // ── CAMERA FEED UPDATE ──
+  function updateCamFeeds() {
+    const zones = ['ZONE_A','ZONE_B','ZONE_C'];
+    zones.forEach(z => {
+      const latest = alerts.filter(a => a.zoneId===z && a.snapshotUrl).sort((a,b)=>b.timestamp-a.timestamp)[0];
+      const feed = document.getElementById('camFeed_'+z);
+      const noFeed = document.getElementById('camNoFeed_'+z);
+      const statusEl = document.getElementById('camStatus_'+z);
+      const pending = alerts.some(a=>a.zoneId===z && a.status==='pending');
+      const dispatched = alerts.some(a=>a.zoneId===z && a.status==='dispatched');
+
+      if(latest) {
+        let img = feed.querySelector('img.cam-feed-img');
+        if(!img) {
+          img = document.createElement('img');
+          img.className = 'cam-feed-img';
+          feed.insertBefore(img, feed.firstChild);
+          if(noFeed) noFeed.style.display='none';
+        }
+        if(img.src !== location.origin+latest.snapshotUrl) {
+          img.src = latest.snapshotUrl;
+        }
+      }
+
+      // Status + map colors
+      const corners = feed.querySelectorAll('.cam-hud-corner');
+      // Remove old alert banner
+      let banner = feed.querySelector('.cam-alert-banner');
+      if(banner && !pending) { banner.remove(); banner=null; }
+
+      if(pending) {
+        corners.forEach(c=>c.classList.add('alert'));
+        if(statusEl) { statusEl.className='cam-status alert'; statusEl.innerHTML='⚠ ALERT'; }
+        if(!banner) {
+          const b=document.createElement('div'); b.className='cam-alert-banner';
+          b.innerHTML = '⚠ INCIDENT DETECTED — AWAITING DISPATCH';
+          feed.appendChild(b);
+        }
+        // Map dot
+        const dot=document.getElementById('mapDot_'+z); if(dot){dot.setAttribute('fill','#f85149');}
+        const ring=document.getElementById('mapRing_'+z); if(ring){ring.setAttribute('stroke','rgba(248,81,73,0.9)');}
+      } else if(dispatched) {
+        corners.forEach(c=>c.classList.remove('alert'));
+        if(statusEl){statusEl.className='cam-status';statusEl.style.color='var(--purple)';statusEl.innerHTML='<span style="color:var(--purple)">● DISPATCHED</span>';}
+        const dot=document.getElementById('mapDot_'+z);if(dot){dot.setAttribute('fill','#a371f7');}
+        const ring=document.getElementById('mapRing_'+z);if(ring){ring.setAttribute('stroke','rgba(163,113,247,0.8)');}
+      } else {
+        corners.forEach(c=>c.classList.remove('alert'));
+        if(statusEl){statusEl.className='cam-status';statusEl.style.color='';statusEl.innerHTML='<span class="live-dot"></span>LIVE';}
+        const dot=document.getElementById('mapDot_'+z);if(dot){dot.setAttribute('fill','#3fb950');}
+        const ring=document.getElementById('mapRing_'+z);if(ring){ring.setAttribute('stroke','rgba(63,185,80,0.8)');}
+      }
+    });
+  }
+
+  // ── LOAD DATA ──
+  // Track the last status of the selected alert so we don't re-render
+  // the detail panel (and wipe user's form inputs) on every poll cycle.
+  let lastRenderedStatus = null;
+
+  async function load() {
+    try {
+      const [ar, er] = await Promise.all([fetch('/api/alerts?limit=60'), fetch('/api/employees')]);
+      const [ad, ed] = await Promise.all([ar.json(), er.json()]);
+      alerts = ad.alerts || [];
+      employees = ed.employees || [];
+
+      const pending = alerts.filter(a=>a.status==='pending').length;
+      const badge = document.getElementById('navBadge');
+      if(pending > 0) { badge.style.display=''; badge.textContent=pending; }
+      else badge.style.display='none';
+
+      document.getElementById('statTotal').textContent = alerts.length;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statDispatched').textContent = alerts.filter(a=>a.status==='dispatched').length;
+      document.getElementById('statResolved').textContent = alerts.filter(a=>a.status==='resolved').length;
+
+      if(alerts.length > prevCount && prevCount > 0) {
+        beep();
+        const newest = [...alerts].sort((a,b)=>b.timestamp-a.timestamp)[0];
+        showToast('danger', '⚠ New Incident Detected', `${fmtType(newest.eventType)} detected in ${newest.zoneId.replace('_',' ')}.`);
+      }
+      prevCount = alerts.length;
+
+      updateCamFeeds();
+      renderFeed();
+
+      // Only re-render the detail panel if:
+      // (a) no alert is selected yet, OR
+      // (b) the selected alert's status has changed (e.g. dispatched → resolved)
+      // This preserves form inputs (officer selection, instructions text) during polling.
+      if(selectedId) {
+        const sel = alerts.find(x => x.id === selectedId);
+        const newStatus = sel ? sel.status : null;
+        if(newStatus !== lastRenderedStatus) {
+          lastRenderedStatus = newStatus;
+          renderDetail(selectedId);
+        }
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  // ── FORMAT ──
+  function fmtType(t) { return (t||'UNKNOWN').replace(/_/g,' '); }
+  function fmtTime(ts) {
+    const d=new Date(ts);
+    return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false}) + ' ' + d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+  }
+  function eventEmoji(t) {
+    const m={'TRASH_ACCUMULATION':'🗑','ILLEGAL_PARKING':'🚗','POTHOLE_HAZARD':'⚠','RESTRICTED_ACCESS':'🚨'};
+    return m[t]||'📷';
+  }
+
+  // ── RENDER FEED ──
+  function renderFeed() {
+    const el = document.getElementById('alertsFeed');
+    let list = [...alerts].sort((a,b)=>b.timestamp-a.timestamp);
+    if(filter!=='all') list = list.filter(a=>a.status===filter);
+
+    document.getElementById('feedCount').textContent = list.length+' alert'+(list.length!==1?'s':'');
+
+    if(!list.length) {
+      el.innerHTML = `<div class="empty-list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>No alerts found</span></div>`;
+      return;
+    }
+
+    el.innerHTML = list.map(a => {
+      const thumb = a.snapshotUrl
+        ? `<img class="alert-thumb" src="${a.snapshotUrl}" loading="lazy"/>`
+        : `<div class="alert-thumb-placeholder">${eventEmoji(a.eventType)}</div>`;
+      const active = a.id===selectedId ? 'active' : '';
+      return `
+        <div class="alert-item ${active}" onclick="selectAlert('${a.id}')">
+          ${thumb}
+          <div class="alert-info">
+            <div class="alert-title">${fmtType(a.eventType)}</div>
+            <div class="alert-sub">
+              <span>📍 ${a.zoneId.replace('_',' ')}</span>
+              <span>⏱ ${fmtTime(a.timestamp)}</span>
+            </div>
+            <div style="margin-top:5px;display:flex;align-items:center;gap:6px;">
+              <span class="status-dot ${a.status}"></span>
+              <span class="status-pill ${a.status}">${a.status}</span>
+              <span style="font-size:10px;color:var(--muted);margin-left:auto;">${(a.confidence*100).toFixed(0)}% conf.</span>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function selectAlert(id) {
+    selectedId = id;
+    // Reset the last rendered status tracker so the detail always
+    // renders fresh when the user clicks a different alert.
+    lastRenderedStatus = null;
+    renderFeed();
+    renderDetail(id);
+  }
+
+  // ── RENDER DETAIL ──
+  function renderDetail(id) {
+    const a = alerts.find(x=>x.id===id);
+    const empty = document.getElementById('detailEmpty');
+    const content = document.getElementById('detailContent');
+    if(!a) { empty.style.display='flex'; content.style.display='none'; return; }
+    empty.style.display='none'; content.style.display='flex';
+    // Keep the status tracker in sync with what we just rendered
+    lastRenderedStatus = a.status;
+
+    let actionHtml = '';
+    if(a.status==='pending') {
+      // suggest zone employees first
+      const zoneEmps = employees.filter(e=>e.zone===a.zoneId);
+      const optsList = (zoneEmps.length?zoneEmps:employees).map(e=>`<option value="${e.id}">${e.name} — ${e.role}</option>`).join('');
+      actionHtml = `
+        <div class="action-card">
+          <div class="action-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Dispatch Field Officer
+          </div>
+          <form onsubmit="doDispatch(event,'${a.id}')">
+            <div class="form-group" style="margin-bottom:10px;">
+              <label class="form-lbl">Assign Officer</label>
+              <select class="form-sel" id="selEmp" required>
+                <option value="">— Select officer —</option>
+                ${optsList}
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label class="form-lbl">Operational Instructions</label>
+              <textarea class="form-ta" id="taInstr" placeholder="e.g. Clear the garbage pile near the eastern gate. Cordon off the area and update HQ." required></textarea>
+            </div>
+            <button type="submit" class="btn-dispatch">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Dispatch Officer
+            </button>
+          </form>
+        </div>`;
+    } else if(a.status==='dispatched') {
+      actionHtml = `
+        <div class="dispatched-card">
+          <div class="dispatched-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Officer Dispatched
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+            <div><strong style="color:var(--text)">Officer:</strong> ${a.assignedEmployee?.name||'—'}</div>
+            <div><strong style="color:var(--text)">Role:</strong> ${a.assignedEmployee?.role||'—'}</div>
+            <div><strong style="color:var(--text)">Dispatched:</strong> ${fmtTime(a.dispatchedAt)}</div>
+            <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:4px;font-style:italic;">"${a.instructions}"</div>
+          </div>
+        </div>
+        <div class="action-card">
+          <div class="action-card-title">Admin Override — Close Issue</div>
+          <div class="form-group" style="margin-bottom:10px;">
+            <label class="form-lbl">Closure Notes</label>
+            <textarea class="form-ta" id="taClose" placeholder="Describe how the issue was resolved..."></textarea>
+          </div>
+          <button class="btn-dispatch green" onclick="doResolve('${a.id}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Mark Resolved
+          </button>
+        </div>`;
+    } else {
+      actionHtml = `
+        <div class="resolved-card">
+          <div class="resolved-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+            Issue Resolved
+          </div>
+          <div class="resolved-line"><strong>Resolved by:</strong> ${a.assignedEmployee?.name||'Admin'}</div>
+          <div class="resolved-line"><strong>Completed:</strong> ${fmtTime(a.resolvedAt)}</div>
+          <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.25);border-radius:4px;font-size:12px;color:var(--muted);font-style:italic;">"${a.resolutionNotes||'No notes provided.'}"</div>
+        </div>`;
+    }
+
+    const imgHtml = a.snapshotUrl
+      ? `<img class="detail-img" src="${a.snapshotUrl}"/><div class="detail-img-badge">${a.zoneId.replace('_',' ')} · ${fmtTime(a.timestamp)}</div>`
+      : `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:30px;">${eventEmoji(a.eventType)}</div>`;
+
+    content.innerHTML = `
+      <div class="detail-img-wrap">${imgHtml}</div>
+      <div class="detail-meta">
+        <div class="meta-field">
+          <div class="meta-label">Event Type</div>
+          <div class="meta-value">${fmtType(a.eventType)}</div>
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Status</div>
+          <div class="meta-value"><span class="status-pill ${a.status}">${a.status}</span></div>
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Zone</div>
+          <div class="meta-value mono">${a.zoneId.replace('_',' ')}</div>
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Confidence</div>
+          <div class="meta-value">${(a.confidence*100).toFixed(1)}%
+            <div class="conf-bar-wrap"><div class="conf-bar-bg"><div class="conf-bar-fill" style="width:${(a.confidence*100).toFixed(0)}%"></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        ${actionHtml}
+      </div>`;
+  }
+
+  async function doDispatch(e, id) {
+    e.preventDefault();
+    const empId = document.getElementById('selEmp').value;
+    const instr = document.getElementById('taInstr').value;
+    const r = await fetch(`/api/alerts/${id}/assign`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({employeeId:empId, instructions:instr})
+    });
+    if(r.ok) {
+      showToast('success','Officer Dispatched','Field officer is now en route to the incident location.');
+      await load();
+    } else {
+      const d = await r.json();
+      showToast('danger','Dispatch Failed', d.error||'Unknown error');
+    }
+  }
+
+  async function doResolve(id) {
+    const ta = document.getElementById('taClose');
+    const notes = ta?.value || 'Resolved via Admin Control Panel.';
+    const r = await fetch(`/api/alerts/${id}/resolve`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({resolutionNotes:notes})
+    });
+    if(r.ok) {
+      showToast('success','Issue Resolved','The incident has been marked as resolved and archived.');
+      await load();
+    } else {
+      showToast('danger','Error','Failed to resolve incident.');
+    }
+  }
+
+  async function confirmReset() {
+    if(confirm('Reset all demo data? This will clear all alerts from the database.')) {
+      await fetch('/api/alerts/reset',{method:'POST'});
+      selectedId = null; prevCount = 0;
+      showToast('info','Database Reset','All alerts have been cleared. The simulator will repopulate shortly.');
+      await load();
+    }
+  }
+
+  // ── POLL ──
+  load();
+  setInterval(load, 2000);
+</script>
+</body>
+</html>
