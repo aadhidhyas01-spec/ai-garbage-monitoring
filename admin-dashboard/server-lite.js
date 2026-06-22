@@ -4,9 +4,9 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import { createClient } from '@supabase/supabase-js';
 
-// Upgraded CivicLens backend server
-// Alerts stored in data/db.json to support status and assignments
+// Upgraded CivicLens backend server with Supabase integration
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
@@ -27,8 +27,16 @@ const upload = multer({
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/uploads', express.static(uploadsDir));
 
-const dataDir = path.join(process.cwd(), 'data');
-fs.mkdirSync(dataDir, { recursive: true });
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('ERROR: SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const defaultEmployees = [
   { id: 'emp_1', name: 'Arjun Kumar', role: 'Sanitation Officer', zone: 'ZONE_A', status: 'Active', phone: '+91 98765 43210', email: 'arjun@civiclens.local', password: 'password123' },
@@ -38,31 +46,46 @@ const defaultEmployees = [
   { id: 'emp_5', name: 'Rohan Gupta', role: 'Civic Enforcement Officer', zone: 'ZONE_B', status: 'Active', phone: '+91 98765 43214', email: 'rohan@civiclens.local', password: 'password123' }
 ];
 
-const dbFile = path.join(dataDir, 'db.json');
-
-function readDb() {
-  if (!fs.existsSync(dbFile)) {
-    const initial = { alerts: [], employees: defaultEmployees };
-    fs.writeFileSync(dbFile, JSON.stringify(initial, null, 2), 'utf8');
-    return initial;
-  }
+// Seed default employees if none exist
+async function seedEmployeesIfNeeded() {
   try {
-    return JSON.parse(fs.readFileSync(dbFile, 'utf8'));
-  } catch (e) {
-    return { alerts: [], employees: defaultEmployees };
+    const { data: existing, error } = await supabase
+      .from('employees')
+      .select('id')
+      .limit(1);
+
+    if (error) {
+      console.error('Error checking employees in Supabase:', error);
+      return;
+    }
+
+    if (!existing || existing.length === 0) {
+      console.log('Employees table is empty. Seeding default employees...');
+      const { error: insertError } = await supabase
+        .from('employees')
+        .insert(defaultEmployees);
+
+      if (insertError) {
+        console.error('Error seeding default employees:', insertError);
+      } else {
+        console.log('Seeded employees successfully!');
+      }
+    } else {
+      console.log('Employees table already has data. Skipping seed.');
+    }
+  } catch (err) {
+    console.error('Unexpected error seeding employees:', err);
   }
 }
 
-function writeDb(data) {
-  fs.writeFileSync(dbFile, JSON.stringify(data, null, 2), 'utf8');
-}
+seedEmployeesIfNeeded();
 
 function nowMs() {
   return Date.now();
 }
 
 // Ingest Alert Metadata (no image)
-app.post('/api/alerts', (req, res) => {
+app.post('/api/alerts', async (req, res) => {
   const { zoneId, confidence, eventType, timestamp, meta } = req.body || {};
 
   if (!zoneId || typeof confidence !== 'number' || !eventType) {
@@ -70,7 +93,6 @@ app.post('/api/alerts', (req, res) => {
   }
 
   const ts = typeof timestamp === 'number' ? timestamp : nowMs();
-  const db = readDb();
   
   let parsedMeta = null;
   if (meta) {
@@ -81,30 +103,35 @@ app.post('/api/alerts', (req, res) => {
     }
   }
 
-  const alert = {
-    id: String(Date.now()) + '_' + Math.random().toString(16).slice(2),
-    zoneId: String(zoneId),
-    timestamp: ts,
-    confidence,
-    eventType: String(eventType),
-    snapshotUrl: null,
-    status: 'pending',
-    assignedEmployee: null,
-    instructions: null,
-    dispatchedAt: null,
-    resolutionNotes: null,
-    resolvedAt: null,
-    meta: parsedMeta
-  };
+  const alertId = String(Date.now()) + '_' + Math.random().toString(16).slice(2);
 
-  db.alerts.push(alert);
-  writeDb(db);
+  const { error } = await supabase
+    .from('alerts')
+    .insert({
+      id: alertId,
+      zoneId: String(zoneId),
+      timestamp: ts,
+      confidence,
+      eventType: String(eventType),
+      snapshotUrl: null,
+      status: 'pending',
+      instructions: null,
+      dispatchedAt: null,
+      resolutionNotes: null,
+      resolvedAt: null,
+      meta: parsedMeta
+    });
 
-  res.json({ ok: true, id: alert.id });
+  if (error) {
+    console.error('Error inserting alert:', error);
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ ok: true, id: alertId });
 });
 
 // Ingest Alert with Snapshot Upload
-app.post('/api/alerts-with-snapshot', upload.single('snapshot'), (req, res) => {
+app.post('/api/alerts-with-snapshot', upload.single('snapshot'), async (req, res) => {
   const { zoneId, confidence, eventType, timestamp, meta } = req.body || {};
 
   if (!req.file) {
@@ -135,64 +162,102 @@ app.post('/api/alerts-with-snapshot', upload.single('snapshot'), (req, res) => {
     }
   }
 
-  const db = readDb();
-  const alert = {
-    id: String(Date.now()) + '_' + Math.random().toString(16).slice(2),
-    zoneId: String(zoneId),
-    timestamp: tsNum,
-    confidence: confNum,
-    eventType: String(eventType),
-    snapshotUrl: `/uploads/${safeName}`,
-    status: 'pending',
-    assignedEmployee: null,
-    instructions: null,
-    dispatchedAt: null,
-    resolutionNotes: null,
-    resolvedAt: null,
-    meta: parsedMeta
-  };
+  const alertId = String(Date.now()) + '_' + Math.random().toString(16).slice(2);
 
-  db.alerts.push(alert);
-  writeDb(db);
+  const { error } = await supabase
+    .from('alerts')
+    .insert({
+      id: alertId,
+      zoneId: String(zoneId),
+      timestamp: tsNum,
+      confidence: confNum,
+      eventType: String(eventType),
+      snapshotUrl: `/uploads/${safeName}`,
+      status: 'pending',
+      instructions: null,
+      dispatchedAt: null,
+      resolutionNotes: null,
+      resolvedAt: null,
+      meta: parsedMeta
+    });
 
-  res.json({ ok: true, id: alert.id });
+  if (error) {
+    console.error('Error inserting alert with snapshot:', error);
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ ok: true, id: alertId });
 });
 
 // Get Alerts
-app.get('/api/alerts', (req, res) => {
+app.get('/api/alerts', async (req, res) => {
   const limit = Math.min(Number(req.query.limit || 30), 200);
-  const db = readDb();
-  const sorted = [...db.alerts].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
-  res.json({ ok: true, alerts: sorted.slice(0, limit) });
+
+  const { data, error } = await supabase
+    .from('alerts')
+    .select('*, employees(*)')
+    .order('timestamp', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error('Error fetching alerts from Supabase:', error);
+    return res.status(500).json({ error: error.message });
+  }
+
+  // Map to match the frontend expected key 'assignedEmployee'
+  const formattedAlerts = data.map(a => {
+    const { employees, assigned_employee_id, ...rest } = a;
+    return {
+      ...rest,
+      assignedEmployee: employees || null
+    };
+  });
+
+  res.json({ ok: true, alerts: formattedAlerts });
 });
 
 // Get Employees
-app.get('/api/employees', (req, res) => {
-  const db = readDb();
-  // Don't send passwords to frontend
-  const safeEmployees = (db.employees || defaultEmployees).map(e => {
-    const { password, ...rest } = e;
-    return rest;
-  });
-  res.json({ ok: true, employees: safeEmployees });
+app.get('/api/employees', async (req, res) => {
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id, name, role, zone, status, phone, email');
+
+  if (error) {
+    console.error('Error fetching employees from Supabase:', error);
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ ok: true, employees: data });
 });
 
 // Employee Login Endpoint
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body || {};
-  const db = readDb();
-  const employee = (db.employees || defaultEmployees).find(e => e.email === email && e.password === password);
-  
-  if (employee) {
-    const { password: _, ...safeEmployee } = employee;
-    res.json({ ok: true, employee: safeEmployee });
+  if (!email || !password) {
+    return res.status(400).json({ ok: false, error: 'Missing email or password' });
+  }
+
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id, name, role, zone, status, phone, email')
+    .eq('email', email)
+    .eq('password', password)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error during login:', error);
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+
+  if (data) {
+    res.json({ ok: true, employee: data });
   } else {
     res.status(401).json({ ok: false, error: 'Invalid email or password' });
   }
 });
 
 // Assign Alert to Employee
-app.post('/api/alerts/:id/assign', (req, res) => {
+app.post('/api/alerts/:id/assign', async (req, res) => {
   const { id } = req.params;
   const { employeeId, instructions } = req.body || {};
 
@@ -200,28 +265,55 @@ app.post('/api/alerts/:id/assign', (req, res) => {
     return res.status(400).json({ error: 'Missing employeeId or instructions.' });
   }
 
-  const db = readDb();
-  const idx = db.alerts.findIndex(a => a.id === id);
-  if (idx === -1) {
-    return res.status(404).json({ error: 'Alert not found.' });
+  // Check if employee exists
+  const { data: employee, error: empError } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('id', employeeId)
+    .maybeSingle();
+
+  if (empError) {
+    console.error('Error fetching employee for assignment:', empError);
+    return res.status(500).json({ error: empError.message });
   }
 
-  const employee = db.employees.find(e => e.id === employeeId);
   if (!employee) {
     return res.status(404).json({ error: 'Employee not found.' });
   }
 
-  db.alerts[idx].status = 'dispatched';
-  db.alerts[idx].assignedEmployee = employee;
-  db.alerts[idx].instructions = instructions;
-  db.alerts[idx].dispatchedAt = nowMs();
+  // Update alert
+  const { data: updatedAlerts, error: updateError } = await supabase
+    .from('alerts')
+    .update({
+      status: 'dispatched',
+      assigned_employee_id: employeeId,
+      instructions: instructions,
+      dispatchedAt: nowMs()
+    })
+    .eq('id', id)
+    .select('*, employees(*)');
 
-  writeDb(db);
-  res.json({ ok: true, alert: db.alerts[idx] });
+  if (updateError) {
+    console.error('Error updating alert assignment:', updateError);
+    return res.status(500).json({ error: updateError.message });
+  }
+
+  if (!updatedAlerts || updatedAlerts.length === 0) {
+    return res.status(404).json({ error: 'Alert not found.' });
+  }
+
+  const a = updatedAlerts[0];
+  const { employees, assigned_employee_id, ...rest } = a;
+  const formattedAlert = {
+    ...rest,
+    assignedEmployee: employees || null
+  };
+
+  res.json({ ok: true, alert: formattedAlert });
 });
 
 // Resolve Alert
-app.post('/api/alerts/:id/resolve', (req, res) => {
+app.post('/api/alerts/:id/resolve', async (req, res) => {
   const { id } = req.params;
   const { resolutionNotes } = req.body || {};
 
@@ -229,29 +321,78 @@ app.post('/api/alerts/:id/resolve', (req, res) => {
     return res.status(400).json({ error: 'Missing resolutionNotes.' });
   }
 
-  const db = readDb();
-  const idx = db.alerts.findIndex(a => a.id === id);
-  if (idx === -1) {
+  const { data: updatedAlerts, error: updateError } = await supabase
+    .from('alerts')
+    .update({
+      status: 'resolved',
+      resolutionNotes: resolutionNotes,
+      resolvedAt: nowMs()
+    })
+    .eq('id', id)
+    .select('*, employees(*)');
+
+  if (updateError) {
+    console.error('Error resolving alert:', updateError);
+    return res.status(500).json({ error: updateError.message });
+  }
+
+  if (!updatedAlerts || updatedAlerts.length === 0) {
     return res.status(404).json({ error: 'Alert not found.' });
   }
 
-  db.alerts[idx].status = 'resolved';
-  db.alerts[idx].resolutionNotes = resolutionNotes;
-  db.alerts[idx].resolvedAt = nowMs();
+  const a = updatedAlerts[0];
+  const { employees, assigned_employee_id, ...rest } = a;
+  const formattedAlert = {
+    ...rest,
+    assignedEmployee: employees || null
+  };
 
-  writeDb(db);
-  res.json({ ok: true, alert: db.alerts[idx] });
+  res.json({ ok: true, alert: formattedAlert });
 });
 
 // Reset Database for demo
-app.post('/api/alerts/reset', (req, res) => {
-  const db = { alerts: [], employees: defaultEmployees };
-  writeDb(db);
-  res.json({ ok: true });
+app.post('/api/alerts/reset', async (req, res) => {
+  try {
+    // Delete all alerts
+    const { error: delAlertsError } = await supabase
+      .from('alerts')
+      .delete()
+      .neq('id', '');
+
+    if (delAlertsError) {
+      console.error('Error resetting alerts:', delAlertsError);
+      return res.status(500).json({ error: delAlertsError.message });
+    }
+
+    // Delete all employees
+    const { error: delEmployeesError } = await supabase
+      .from('employees')
+      .delete()
+      .neq('id', '');
+
+    if (delEmployeesError) {
+      console.error('Error resetting employees:', delEmployeesError);
+      return res.status(500).json({ error: delEmployeesError.message });
+    }
+
+    // Re-seed employees
+    const { error: insertError } = await supabase
+      .from('employees')
+      .insert(defaultEmployees);
+
+    if (insertError) {
+      console.error('Error re-seeding employees:', insertError);
+      return res.status(500).json({ error: insertError.message });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error resetting database:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const port = Number(process.env.PORT || 3000);
 app.listen(port, () => {
   console.log(`CivicLens admin running on http://localhost:${port}`);
 });
-
