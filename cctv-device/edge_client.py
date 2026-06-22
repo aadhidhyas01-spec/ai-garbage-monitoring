@@ -113,25 +113,22 @@ def encode_snapshot_jpeg(frame: np.ndarray):
         raise RuntimeError('Failed to encode snapshot')
     return BytesIO(buf.tobytes())
 
-def send_alert_with_snapshot(frame: np.ndarray, confidence: float, event_type: str, zone_id: str, timestamp_ms: int):
-    url = f"{ADMIN_URL}/api/alerts-with-snapshot"
-    snapshot_file = encode_snapshot_jpeg(frame)
-    
+def send_alert_metadata(confidence: float, event_type: str, zone_id: str, timestamp_ms: int):
+    url = f"{ADMIN_URL}/api/alerts"
     data = {
         'zoneId': zone_id,
-        'confidence': str(confidence),
+        'confidence': float(confidence),
         'eventType': event_type,
-        'timestamp': str(timestamp_ms),
-        'meta': json.dumps({'source': 'edge_client_upgraded'})
+        'timestamp': timestamp_ms,
+        'meta': json.dumps({'source': 'edge_client_metadata_only'})
     }
-
-    files = {
-        'snapshot': ('snapshot.jpg', snapshot_file.getvalue(), 'image/jpeg')
-    }
-
-    resp = requests.post(url, data=data, files=files, timeout=15)
+    resp = requests.post(url, json=data, timeout=15)
     resp.raise_for_status()
     return resp.json()
+
+def send_alert_with_snapshot(frame: np.ndarray, confidence: float, event_type: str, zone_id: str, timestamp_ms: int):
+    # Fallback to metadata-only alert
+    return send_alert_metadata(confidence, event_type, zone_id, timestamp_ms)
 
 def run_simulation():
     """Generates continuous simulated events for the dashboard without requiring a camera."""
@@ -144,12 +141,12 @@ def run_simulation():
         event_type, confidence, zone_id = random.choice(INCIDENTS)
         print(f"\n[Simulator] Simulating event: {event_type} in {zone_id}...")
         
-        # Draw frame
+        # Draw frame for local window display if any
         frame = generate_mock_incident(event_type, zone_id)
         timestamp_ms = int(time.time() * 1000)
         
         try:
-            res = send_alert_with_snapshot(frame, confidence, event_type, zone_id, timestamp_ms)
+            res = send_alert_metadata(confidence, event_type, zone_id, timestamp_ms)
             print(f"[Simulator] Alert posted successfully! DB ID: {res.get('id')}")
         except Exception as e:
             print(f"[Simulator] Failed to send alert: {e}")
