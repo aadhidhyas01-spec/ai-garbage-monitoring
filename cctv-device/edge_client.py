@@ -159,6 +159,62 @@ def run_simulation():
         print(f"[Simulator] Debouncing... Sleeping for {sleep_dur:.1f} seconds...")
         time.sleep(sleep_dur)
 
+def initialize_camera():
+    """Tries to initialize the camera using configured index and backend.
+    Falls back to other indices and DirectShow on Windows if needed."""
+    configured_index = int(os.environ.get('CAMERA_INDEX', '0'))
+    
+    # Try configured configuration first
+    print(f"Attempting to open camera index {configured_index}...")
+    cap = None
+    
+    # On Windows, try DirectShow first as it's more stable
+    backends = []
+    if os.name == 'nt':
+        backends = [cv2.CAP_DSHOW, None]
+    else:
+        backends = [None]
+        
+    for backend in backends:
+        try:
+            if backend is not None:
+                cap = cv2.VideoCapture(configured_index, backend)
+            else:
+                cap = cv2.VideoCapture(configured_index)
+            if cap.isOpened():
+                # Test grabbing a frame to ensure it actually works
+                ret, _ = cap.read()
+                if ret:
+                    print(f"Successfully opened camera index {configured_index}!")
+                    return cap
+                cap.release()
+        except Exception:
+            if cap:
+                cap.release()
+
+    # If configured index failed, search for any working camera index
+    print("Configured camera failed. Searching for any working camera index...")
+    for idx in range(5):
+        if idx == configured_index:
+            continue
+        for backend in (backends if os.name == 'nt' else [None]):
+            try:
+                if backend is not None:
+                    cap = cv2.VideoCapture(idx, backend)
+                else:
+                    cap = cv2.VideoCapture(idx)
+                if cap.isOpened():
+                    ret, _ = cap.read()
+                    if ret:
+                        print(f"Found working camera at index {idx}!")
+                        return cap
+                    cap.release()
+            except Exception:
+                if cap:
+                    cap.release()
+                
+    return None
+
 def main():
     print('CivicLens Edge Client starting...')
     
@@ -167,9 +223,9 @@ def main():
         return
 
     # Attempt to open physical hardware camera
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("[WARNING] Could not open camera (index 0).")
+    cap = initialize_camera()
+    if cap is None or not cap.isOpened():
+        print("[WARNING] Could not open any working physical camera.")
         print("[INFO] Fallback: Starting AI Camera Simulator instead...")
         run_simulation()
         return
@@ -222,13 +278,19 @@ def main():
                 cv2.LINE_AA
             )
             
-        cv2.imshow('CivicLens AI Camera Feed', frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        try:
+            cv2.imshow('CivicLens AI Camera Feed', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        except Exception:
+            # Fallback to keep CPU usage standard if running in a headless shell
+            time.sleep(0.03)
 
     cap.release()
-    cv2.destroyAllWindows()
+    try:
+        cv2.destroyAllWindows()
+    except Exception:
+        pass
 
 if __name__ == '__main__':
     main()
