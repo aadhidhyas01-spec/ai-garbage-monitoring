@@ -37,7 +37,7 @@ Dashboard: [http://localhost:3000](http://localhost:3000)
 - `POST /api/alerts-with-snapshot` — multipart alert with `zoneId`, `confidence`, `eventType`, optional `timestamp` / `meta` and a `snapshot` JPEG.
 - `GET /api/alerts?limit=30` — recent alerts.
 
-The `employees` table must have a `password_hash` column. The login endpoint verifies scrypt hashes in `salt:hex` format; it never accepts plaintext passwords from the database. Add employee records with a securely generated hash.
+Run `database/employee-password-hash.sql` in the Supabase SQL Editor to add the `password_hash` column. Existing accounts that still use a plaintext `password` column will not be able to log in until you generate and store a scrypt hash in `salt:hex` format. After migrating every account, drop the old plaintext column. The login endpoint verifies scrypt hashes and never returns them to the browser.
 
 Example hash generation using Node.js:
 
