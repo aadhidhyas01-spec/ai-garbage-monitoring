@@ -127,8 +127,20 @@ def send_alert_metadata(confidence: float, event_type: str, zone_id: str, timest
     return resp.json()
 
 def send_alert_with_snapshot(frame: np.ndarray, confidence: float, event_type: str, zone_id: str, timestamp_ms: int):
-    # Fallback to metadata-only alert
-    return send_alert_metadata(confidence, event_type, zone_id, timestamp_ms)
+    """Send alert metadata and an actual JPEG snapshot to the dashboard."""
+    url = f"{ADMIN_URL}/api/alerts-with-snapshot"
+    payload = {
+        "zoneId": zone_id,
+        "confidence": float(confidence),
+        "eventType": event_type,
+        "timestamp": timestamp_ms,
+        "meta": json.dumps({"source": "edge_client_camera"})
+    }
+    snapshot_bytes = encode_snapshot_jpeg(frame).getvalue()
+    files = {"snapshot": ("snapshot.jpg", snapshot_bytes, "image/jpeg")}
+    response = requests.post(url, data=payload, files=files, timeout=20)
+    response.raise_for_status()
+    return response.json()
 
 def run_simulation():
     """Generates continuous simulated events for the dashboard without requiring a camera."""
