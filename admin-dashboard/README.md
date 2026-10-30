@@ -1,43 +1,56 @@
-# CivicLens Admin Dashboard (MVP - Lite)
+# CivicLens Admin Dashboard (MVP)
 
-This version avoids native SQLite dependencies (better-sqlite3) to work in environments without Visual Studio build tools.
+The active server is `server-lite.js`, launched by the `start` script in `package.json`. It uses Express, Supabase and Multer; it does **not** use the older SQLite `server.js`.
 
-## Prerequisites
+## Requirements
+
 - Node.js 18+
+- Supabase project with `alerts` and `employees` tables
+- A Supabase anon key with appropriately restricted Row Level Security
 
 ## Setup
-```bash
-cd admin-dashboard
+
+```cmd
 npm install
+copy .env.example .env
 ```
 
-## Configure
-Create `.env`:
+Set these values in `.env`:
+
 ```env
 PORT=3000
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-public-anon-key
 ```
 
-## Run
-```bash
+Run the server:
+
+```cmd
 npm start
 ```
 
-Dashboard: http://localhost:3000
+Dashboard: [http://localhost:3000](http://localhost:3000)
 
 ## API
-- `POST /api/alerts`
-  - JSON body: `{ zoneId, confidence, eventType, timestamp?, meta? }`
-- `POST /api/alerts-with-snapshot`
-  - multipart/form-data with fields:
-    - `zoneId` (string)
-    - `confidence` (number)
-    - `eventType` (string)
-    - `timestamp` (optional)
-    - `meta` (optional JSON string)
-    - `snapshot` (file)
-- `GET /api/alerts?limit=30`
+
+- `POST /api/alerts` — JSON metadata-only alert.
+- `POST /api/alerts-with-snapshot` — multipart alert with `zoneId`, `confidence`, `eventType`, optional `timestamp` / `meta` and a `snapshot` JPEG.
+- `GET /api/alerts?limit=30` — recent alerts.
+
+The `employees` table must have a `password_hash` column. The login endpoint verifies scrypt hashes in `salt:hex` format; it never accepts plaintext passwords from the database. Add employee records with a securely generated hash.
+
+Example hash generation using Node.js:
+
+```bash
+node --input-type=module -e "import { randomBytes, scryptSync } from 'node:crypto'; const password = process.argv[1]; const salt = randomBytes(16).toString('hex'); console.log(salt + ':' + scryptSync(password, salt, 64).toString('hex'));" "change-this-password"
+```
 
 ## Storage
-- Alerts are appended to `data/alerts.jsonl`.
-- Snapshots are saved to `uploads/`.
 
+- Alert records are stored in Supabase.
+- Snapshot files are saved to the local `uploads/` folder and their relative path is stored in Supabase.
+- Local uploads are not durable storage on ephemeral hosting platforms.
+
+## Security warning
+
+This is a development prototype, not a production-ready employee-management system. Management routes still need full authentication and authorisation, the Supabase anon key requires restrictive RLS policies, and the service must be exposed only on a trusted network until those controls are implemented.
