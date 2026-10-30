@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import express from 'express';
-import cors from 'cors';
+import { scryptSync, timingSafeEqual } from 'node:crypto';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
@@ -11,7 +11,6 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 const app = express();
-app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
 // Ensure uploads dir
@@ -38,47 +37,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const defaultEmployees = [
-  { id: 'emp_1', name: 'Arjun Kumar', role: 'Sanitation Officer', zone: 'ZONE_A', status: 'Active', phone: '+91 98765 43210', email: 'arjun@civiclens.local', password: 'password123' },
-  { id: 'emp_2', name: 'Priya Sharma', role: 'Safety Inspector', zone: 'ZONE_B', status: 'Active', phone: '+91 98765 43211', email: 'priya@civiclens.local', password: 'password123' },
-  { id: 'emp_3', name: 'Vikram Singh', role: 'Maintenance Engineer', zone: 'ZONE_C', status: 'Active', phone: '+91 98765 43212', email: 'vikram@civiclens.local', password: 'password123' },
-  { id: 'emp_4', name: 'Kavitha Ram', role: 'Waste Management Lead', zone: 'ZONE_A', status: 'Active', phone: '+91 98765 43213', email: 'kavitha@civiclens.local', password: 'password123' },
-  { id: 'emp_5', name: 'Rohan Gupta', role: 'Civic Enforcement Officer', zone: 'ZONE_B', status: 'Active', phone: '+91 98765 43214', email: 'rohan@civiclens.local', password: 'password123' }
-];
-
-// Seed default employees if none exist
-async function seedEmployeesIfNeeded() {
-  try {
-    const { data: existing, error } = await supabase
-      .from('employees')
-      .select('id')
-      .limit(1);
-
-    if (error) {
-      console.error('Error checking employees in Supabase:', error);
-      return;
-    }
-
-    if (!existing || existing.length === 0) {
-      console.log('Employees table is empty. Seeding default employees...');
-      const { error: insertError } = await supabase
-        .from('employees')
-        .insert(defaultEmployees);
-
-      if (insertError) {
-        console.error('Error seeding default employees:', insertError);
-      } else {
-        console.log('Seeded employees successfully!');
-      }
-    } else {
-      console.log('Employees table already has data. Skipping seed.');
-    }
-  } catch (err) {
-    console.error('Unexpected error seeding employees:', err);
-  }
+// Verify a password stored as "<salt-hex>:<scrypt-hash-hex>".
+function verifyPassword(candidate, storedValue) {
+  const [salt, hashHex] = String(storedValue || "").split(":");
+  if (!salt || !hashHex) return false;
+  const expected = Buffer.from(hashHex, "hex");
+  if (expected.length !== 64) return false;
+  const actual = scryptSync(String(candidate), salt, expected.length);
+  return timingSafeEqual(actual, expected);
 }
 
-seedEmployeesIfNeeded();
+
 
 function nowMs() {
   return Date.now();
@@ -239,21 +208,21 @@ app.post('/api/login', async (req, res) => {
 
   const { data, error } = await supabase
     .from('employees')
-    .select('id, name, role, zone, status, phone, email')
+    .select('id, name, role, zone, status, phone, email, password_hash')
     .eq('email', email)
-    .eq('password', password)
     .maybeSingle();
 
   if (error) {
     console.error('Error during login:', error);
-    return res.status(500).json({ ok: false, error: error.message });
+    return res.status(500).json({ ok: false, error: 'Unable to verify account.' });
   }
 
-  if (data) {
-    res.json({ ok: true, employee: data });
-  } else {
-    res.status(401).json({ ok: false, error: 'Invalid email or password' });
+  if (data && verifyPassword(password, data.password_hash)) {
+    const { password_hash, ...safeEmployee } = data;
+    return res.json({ ok: true, employee: safeEmployee });
   }
+
+  return res.status(401).json({ ok: false, error: 'Invalid email or password' });
 });
 
 // Assign Alert to Employee
@@ -364,26 +333,7 @@ app.post('/api/alerts/reset', async (req, res) => {
       return res.status(500).json({ error: delAlertsError.message });
     }
 
-    // Delete all employees
-    const { error: delEmployeesError } = await supabase
-      .from('employees')
-      .delete()
-      .neq('id', '');
-
-    if (delEmployeesError) {
-      console.error('Error resetting employees:', delEmployeesError);
-      return res.status(500).json({ error: delEmployeesError.message });
-    }
-
-    // Re-seed employees
-    const { error: insertError } = await supabase
-      .from('employees')
-      .insert(defaultEmployees);
-
-    if (insertError) {
-      console.error('Error re-seeding employees:', insertError);
-      return res.status(500).json({ error: insertError.message });
-    }
+    // Employee accounts are deliberately preserved by the demo reset endpoint.
 
     res.json({ ok: true });
   } catch (err) {
