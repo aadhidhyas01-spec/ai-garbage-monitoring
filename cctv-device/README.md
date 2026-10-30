@@ -1,31 +1,30 @@
-# CivicLens Edge Device (MVP)
+# CivicLens Edge Camera Prototype
 
-Prototype edge client.
+A Python edge-client prototype for sending civic incident alerts to the CivicLens admin dashboard.
 
-- Captures from a fixed camera (webcam for demo)
-- Runs AI detection (stub in MVP)
-- When trigger condition is met, sends alert to admin:
-  - `POST /api/alerts-with-snapshot` with snapshot image
+## Current behaviour
 
-## Prerequisites
-- Python 3.10+
-- A camera device accessible by OpenCV
+- `MOCK_CAMERA=true` (default): generates synthetic mock incidents and sends metadata-only alerts.
+- `MOCK_CAMERA=false`: opens a physical webcam and uses a simple brightness-threshold heuristic to trigger a trash-accumulation alert.
+- The physical-camera path captures and uploads a JPEG snapshot to `POST /api/alerts-with-snapshot`.
+
+**This is not a trained AI detector.** The physical-camera heuristic is a placeholder and must be replaced and validated before real-world use.
 
 ## Setup
-```bash
-cd cctv-device
+
+```cmd
 python -m venv .venv
-.\.venv\Scripts\activate
+.venv\Scripts\activate
 pip install -r requirements.txt
+copy .env.example .env
 ```
 
-## Configure
-Copy `.env.example` to `.env` and set:
-- `ADMIN_URL` (e.g. http://localhost:3000)
-- `ZONE_ID` (e.g. ZONE_1)
+Configure `ADMIN_URL`, `ZONE_ID`, `ALERT_DEBOUNCE_SECONDS` and `MOCK_CAMERA` in `.env`.
 
-## Run (demo)
-```bash
+Run the simulator:
+
+```cmd
 python edge_client.py
 ```
 
+Press Ctrl+C to stop. For camera mode, set `MOCK_CAMERA=false` and ensure a working webcam is connected.
